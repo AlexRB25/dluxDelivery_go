@@ -1,6 +1,5 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Platform, View } from "react-native";
 
 import { C, Loading } from "@/components/ui";
 import { AppProvider, useApp } from "@/lib/app";
@@ -28,19 +27,10 @@ function Pantallas() {
 }
 
 export default function RootLayout() {
-  // En computadora se ve como un celular al centro, para enseñarla igual que en el teléfono
   return (
     <AppProvider>
       <StatusBar style="light" />
-      {Platform.OS === "web" ? (
-        <View style={{ flex: 1, backgroundColor: C.navy, alignItems: "center" }}>
-          <View style={{ flex: 1, width: "100%", maxWidth: 460, backgroundColor: C.background, overflow: "hidden" }}>
-            <Pantallas />
-          </View>
-        </View>
-      ) : (
-        <Pantallas />
-      )}
+      <Pantallas />
     </AppProvider>
   );
 }

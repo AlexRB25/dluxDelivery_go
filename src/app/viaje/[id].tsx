@@ -1,11 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { Platform, Pressable, Text, TextInput, View } from "react-native";
+import { Linking, Platform, Pressable, Text, TextInput, View } from "react-native";
 
 import { Mapa, type PuntoMapa } from "@/components/Mapa";
-import { FilaLugar, TarjetaConductor, Vacio } from "@/components/piezas";
-import { avisar, Button, C, Card, Chip, H2, Muted, Notice, Row, Screen } from "@/components/ui";
+import { ConMapa, FilaLugar, TarjetaConductor, Vacio } from "@/components/piezas";
+import { avisar, Button, C, Card, Chip, H2, Muted, Notice, pronto, Row } from "@/components/ui";
 import { nuevoId, useApp } from "@/lib/app";
 import { ESPERA_GRATIS_MIN, LUGARES } from "@/lib/demo";
 import { hora, km as fmtKm, pesos } from "@/lib/format";
@@ -49,16 +49,19 @@ export default function ViajePantalla() {
   const compartir = () => {
     actualizarViaje(v.id, { compartido: true });
     avisar(
-      "Enlace para compartir",
-      `Quien lo abra ve en vivo dónde vas, el conductor, las placas y la hora de llegada, sin necesidad de cuenta. Deja de funcionar al terminar el viaje.\n\nEn la app real se manda por WhatsApp. Aquí puedes verlo en “Ver como lo ve tu contacto”.`,
+      "Viaje compartido",
+      "Quien tenga el enlace ve en vivo dónde vas, el conductor, las placas y la hora de llegada, sin necesidad de cuenta. Deja de funcionar al terminar el viaje.",
     );
   };
 
   const final = pr.estado === "terminado" ? cuentaFinal(v, ahora) : null;
 
-  return (
-    <Screen>
-      {/* Estado */}
+  // Para presentaciones: mantener presionada la tarjeta de estado adelanta el viaje
+  const adelantar = () => actualizarViaje(v.id, { adelanto: (v.adelanto ?? 0) + 15_000, programado: undefined });
+  const enMarcha = pr.estado !== "terminado" && pr.estado !== "cancelado";
+
+  const estado = (
+    <Pressable onLongPress={enMarcha ? adelantar : undefined} delayLongPress={900}>
       <Card style={{ backgroundColor: C.navy, borderColor: C.navy }}>
         <Row style={{ justifyContent: "space-between" }}>
           <Text style={{ color: "#ffffffaa", fontWeight: "700" }}>
@@ -74,8 +77,11 @@ export default function ViajePantalla() {
           </View>
         )}
       </Card>
+    </Pressable>
+  );
 
-      {pr.estado !== "terminado" && pr.estado !== "cancelado" && <Mapa height={260} puntos={puntos} ruta seguir={!!pr.conductor} />}
+  return (
+    <ConMapa arriba={estado} mapa={enMarcha ? (llenar) => <Mapa llenar={llenar} height={260} puntos={puntos} ruta seguir={!!pr.conductor} /> : null}>
 
       {pr.estado === "buscando" && <Notice tone="navy" icon="radio">Estamos avisando a los conductores cercanos. Normalmente tarda menos de un minuto.</Notice>}
 
@@ -92,10 +98,10 @@ export default function ViajePantalla() {
           <TarjetaConductor c={v.conductor} vehiculo={v.servicio.vehiculo} />
           <Row>
             <View style={{ flex: 1 }}>
-              <Button small variant="outline" icon="call" title="Llamar" onPress={() => avisar("Versión de prueba", "En la app real llamas al conductor sin que ninguno vea el número del otro.")} />
+              <Button small variant="outline" icon="call" title="Llamar" onPress={() => pronto("Llamar al conductor desde la app")} />
             </View>
             <View style={{ flex: 1 }}>
-              <Button small variant="outline" icon="chatbubbles" title="Mensaje" onPress={() => avisar("Versión de prueba", `En la app real le escribes a ${nombre} por el chat del viaje.`)} />
+              <Button small variant="outline" icon="chatbubbles" title="Mensaje" onPress={() => pronto("El chat con el conductor")} />
             </View>
           </Row>
         </Card>
@@ -157,8 +163,8 @@ export default function ViajePantalla() {
           {ayuda && (
             <Card style={{ borderColor: C.danger }}>
               <H2>¿Necesitas ayuda?</H2>
-              <Button variant="danger" icon="call" title="Llamar al 911" onPress={() => avisar("Versión de prueba", "En la app real marca al 911 y manda tu ubicación y los datos del viaje.")} />
-              <Button variant="outline" icon="headset" title="Hablar con Dlux" onPress={() => avisar("Versión de prueba", "En la app real te comunica con el equipo de Dlux al momento.")} />
+              <Button variant="danger" icon="call" title="Llamar al 911" onPress={() => Linking.openURL("tel:911")} />
+              <Button variant="outline" icon="headset" title="Hablar con Dlux" onPress={() => pronto("Hablar con Dlux desde el viaje")} />
               <Button variant="outline" icon="people" title="Avisar a mis contactos de confianza" onPress={compartir} />
             </Card>
           )}
@@ -195,7 +201,7 @@ export default function ViajePantalla() {
             {final.cargoTarjeta > 0 && <Fila t="Cargo por tarjeta" v={pesos(final.cargoTarjeta)} />}
             <Fila t="Total" v={pesos(final.total)} fuerte />
             <Muted>
-              {v.metodo === "card" ? "Cobrado a tu Visa 4242 (demo)" : v.pagaCon ? `Efectivo: pagaste con ${pesos(v.pagaCon)}, cambio ${pesos(v.pagaCon - final.total)}` : "Pagado en efectivo"}
+              {v.metodo === "card" ? "Cobrado a tu Visa •••• 4242" : v.pagaCon ? `Efectivo: pagaste con ${pesos(v.pagaCon)}, cambio ${pesos(v.pagaCon - final.total)}` : "Pagado en efectivo"}
             </Muted>
             {v.cambios.length > 0 && <Muted>Incluye las paradas o cambios de destino que pediste en el camino.</Muted>}
           </Card>
@@ -231,7 +237,7 @@ export default function ViajePantalla() {
           ) : (
             <Notice tone="ok" icon="star">{`Calificaste con ${v.calificacion} estrellas. ¡Gracias!`}</Notice>
           )}
-          <Button variant="outline" icon="flag" title="Reportar un problema" onPress={() => avisar("Versión de prueba", "En la app real abres un reporte (cobro, objeto olvidado, seguridad…) y Dlux responde en menos de 24 h.")} />
+          <Button variant="outline" icon="flag" title="Reportar un problema" onPress={() => pronto("Reportar un problema del viaje")} />
         </>
       )}
 
@@ -239,13 +245,10 @@ export default function ViajePantalla() {
 
       {pr.estado !== "terminado" && pr.estado !== "cancelado" && (
         <>
-          <Pressable onPress={() => actualizarViaje(v.id, { adelanto: (v.adelanto ?? 0) + 15_000, programado: undefined })} style={{ alignSelf: "center", padding: 8 }}>
-            <Text style={{ color: C.muted, fontWeight: "700" }}>⏩ Adelantar el viaje (demo)</Text>
-          </Pressable>
           {pr.estado !== "en_viaje" && <Button variant="outline" icon="close-circle" title="Cancelar viaje" onPress={cancelar} />}
         </>
       )}
-    </Screen>
+    </ConMapa>
   );
 }
 

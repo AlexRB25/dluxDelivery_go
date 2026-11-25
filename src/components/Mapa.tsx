@@ -29,7 +29,7 @@ export function Mapa(props: MapaProps) {
   };
 
   return (
-    <View style={{ height: props.height ?? 220, borderRadius: 14, overflow: "hidden", backgroundColor: C.gray }}>
+    <View style={[{ borderRadius: 14, overflow: "hidden", backgroundColor: C.gray }, props.llenar ? { flex: 1, minHeight: 300 } : { height: props.height ?? 220 }]}>
       <WebView
         ref={web}
         source={{ html: MAPA_HTML, baseUrl: "https://dlux.app" }}

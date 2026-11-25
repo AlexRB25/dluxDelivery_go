@@ -1,11 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, Text, View } from "react-native";
+import type { ReactNode } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
 import type { Lugar } from "@/lib/types";
 
-import { C, Row } from "./ui";
+import { C, Row, Screen, useEscritorio } from "./ui";
 
-export function FilaLugar({ l, onPress, derecha }: { l: Lugar; onPress: () => void; derecha?: React.ReactNode }) {
+export function FilaLugar({ l, onPress, derecha }: { l: Lugar; onPress: () => void; derecha?: ReactNode }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11 }, pressed && { opacity: 0.6 }]}>
       <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: C.navySoft, alignItems: "center", justifyContent: "center" }}>
@@ -21,17 +22,6 @@ export function FilaLugar({ l, onPress, derecha }: { l: Lugar; onPress: () => vo
       </View>
       {derecha}
     </Pressable>
-  );
-}
-
-export function AvisoDemo() {
-  return (
-    <Row style={{ backgroundColor: C.yellowSoft, borderRadius: 12, padding: 10, alignItems: "flex-start" }}>
-      <Ionicons name="flask" size={18} color={C.warn} />
-      <Text style={{ color: C.warn, flex: 1, fontSize: 13, fontWeight: "600" }}>
-        Versión de prueba: conductores y viajes de ejemplo, no se cobra nada y el viaje avanza solo para que veas todo el recorrido.
-      </Text>
-    </Row>
   );
 }
 
@@ -65,5 +55,31 @@ export function TarjetaConductor({ c, vehiculo }: { c: { nombre: string; emoji: 
         <Text style={{ fontWeight: "900", color: C.navy, letterSpacing: 1 }}>{c.placas}</Text>
       </View>
     </Row>
+  );
+}
+
+/**
+ * Mapa + contenido. En celular: lo de arriba, el mapa y el resto en una columna.
+ * En computadora: mapa grande a la izquierda y panel con scroll a la derecha.
+ */
+export function ConMapa({ arriba, mapa, children }: { arriba?: ReactNode; mapa: ((llenar: boolean) => ReactNode) | null; children?: ReactNode }) {
+  const escritorio = useEscritorio();
+  if (!escritorio || !mapa) {
+    return (
+      <Screen>
+        {arriba}
+        {mapa?.(false)}
+        {children}
+      </Screen>
+    );
+  }
+  return (
+    <View style={{ flex: 1, flexDirection: "row", backgroundColor: C.background }}>
+      <View style={{ flex: 1, padding: 16, paddingRight: 0 }}>{mapa(true)}</View>
+      <ScrollView style={{ width: 470, flexGrow: 0 }} contentContainerStyle={{ padding: 16, gap: 12 }} keyboardShouldPersistTaps="always">
+        {arriba}
+        {children}
+      </ScrollView>
+    </View>
   );
 }

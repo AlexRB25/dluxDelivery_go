@@ -13,6 +13,7 @@ import {
   type StyleProp,
   type TextInputProps,
   type ViewStyle,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -44,8 +45,19 @@ export const C = {
   dangerSoft: "#FEE2E2",
 };
 
-export function Screen({ children, scroll = true, padded = true }: PropsWithChildren<{ scroll?: boolean; padded?: boolean }>) {
-  const inner = <View style={[{ gap: 12 }, padded && { padding: 16 }]}>{children}</View>;
+/** Pantalla ancha (computadora o tablet en horizontal). */
+export function useEscritorio() {
+  const { width } = useWindowDimensions();
+  return width >= 900;
+}
+
+/** "Muy pronto": para lo que todavía no está conectado. */
+export function pronto(que: string) {
+  avisar("Muy pronto", `${que} llega en la próxima actualización.`);
+}
+
+export function Screen({ children, scroll = true, padded = true, ancho = 760 }: PropsWithChildren<{ scroll?: boolean; padded?: boolean; ancho?: number }>) {
+  const inner = <View style={[{ gap: 12, width: "100%", maxWidth: ancho, alignSelf: "center" }, padded && { padding: 16 }]}>{children}</View>;
   return (
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: C.background }}>
       {scroll ? <ScrollView keyboardShouldPersistTaps="always">{inner}</ScrollView> : inner}

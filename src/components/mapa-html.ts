@@ -9,6 +9,8 @@ export type MapaProps = {
   /** Volver a encuadrar cada vez que cambian los puntos (por defecto solo la primera vez). */
   seguir?: boolean;
   height?: number;
+  /** Ocupar todo el alto disponible (columna del mapa en computadora). */
+  llenar?: boolean;
 };
 
 export const datosMapa = (p: MapaProps) =>

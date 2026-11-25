@@ -33,7 +33,7 @@ export function Mapa(props: MapaProps) {
   }, [listo, datos]);
 
   return (
-    <View style={{ height: props.height ?? 220, borderRadius: 14, overflow: "hidden", backgroundColor: C.gray }}>
+    <View style={[{ borderRadius: 14, overflow: "hidden", backgroundColor: C.gray }, props.llenar ? { flex: 1, minHeight: 300 } : { height: props.height ?? 220 }]}>
       <iframe ref={frame} title="Mapa" srcDoc={MAPA_HTML} style={{ border: 0, width: "100%", height: "100%" }} />
     </View>
   );

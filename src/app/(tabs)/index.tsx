@@ -4,8 +4,8 @@ import { Linking, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Mapa } from "@/components/Mapa";
-import { AvisoDemo, FilaLugar } from "@/components/piezas";
-import { C, H2, Row } from "@/components/ui";
+import { FilaLugar } from "@/components/piezas";
+import { C, H2, Row, useEscritorio } from "@/components/ui";
 import { useApp } from "@/lib/app";
 import { PROMOS } from "@/lib/demo";
 import { DELIVERY_URL } from "@/lib/format";
@@ -17,27 +17,26 @@ export default function Inicio() {
   const { borrador, nuevoBorrador, guardados, recientes, viajes, ahora, nombre } = useApp();
   const enCurso = viajes.find((v) => activo(v, ahora));
   const tipo = borrador.tipo;
+  const escritorio = useEscritorio();
+  const mapaOrigen = [{ ...borrador.origen.ubicacion, tipo: "origen" as const, titulo: "Estás aquí" }];
 
   const ir = (t: TipoViaje, destino?: Lugar) => {
     nuevoBorrador(t, destino ?? null);
     router.push(destino ? "/cotizar" : "/destino");
   };
 
-  return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: C.navy }}>
-      <ScrollView style={{ flex: 1, backgroundColor: C.background }} contentContainerStyle={{ paddingBottom: 24 }}>
+  const encabezado = (
         <View style={{ backgroundColor: C.navy, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 14 }}>
           <Row style={{ justifyContent: "space-between" }}>
             <Text style={{ color: C.yellow, fontWeight: "900", fontSize: 24, letterSpacing: 0.5 }}>Dlux Go</Text>
             <Text style={{ color: "#ffffffaa" }}>Hola{nombre !== "Invitado" ? `, ${nombre.split(" ")[0]}` : ""} 👋</Text>
           </Row>
         </View>
+  );
 
-        <View style={{ marginTop: -2 }}>
-          <Mapa height={230} puntos={[{ ...borrador.origen.ubicacion, tipo: "origen", titulo: "Estás aquí" }]} />
-        </View>
+  const panel = (
+    <>
 
-        <View style={{ padding: 16, gap: 14, marginTop: -26 }}>
           {/* ¿A dónde vas? */}
           <View style={{ backgroundColor: C.surface, borderRadius: 20, padding: 14, gap: 12, borderWidth: 1, borderColor: C.border, shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 12, elevation: 4 }}>
             <Row style={{ backgroundColor: C.background, borderRadius: 14, padding: 4 }}>
@@ -81,8 +80,6 @@ export default function Inicio() {
             </Pressable>
           )}
 
-          <AvisoDemo />
-
           {/* Servicios */}
           <H2>Servicios</H2>
           <Row style={{ gap: 10 }}>
@@ -125,7 +122,34 @@ export default function Inicio() {
             </View>
             <Ionicons name="open-outline" size={18} color={C.navy} />
           </Pressable>
+    </>
+  );
+
+  // Computadora: mapa a toda la altura a la izquierda y el panel a la derecha
+  if (escritorio) {
+    return (
+      <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: C.navy }}>
+        {encabezado}
+        <View style={{ flex: 1, flexDirection: "row", backgroundColor: C.background }}>
+          <View style={{ flex: 1, padding: 16, paddingRight: 0 }}>
+            <Mapa llenar puntos={mapaOrigen} />
+          </View>
+          <ScrollView style={{ width: 470, flexGrow: 0 }} contentContainerStyle={{ padding: 16, gap: 14 }}>
+            {panel}
+          </ScrollView>
         </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: C.navy }}>
+      <ScrollView style={{ flex: 1, backgroundColor: C.background }} contentContainerStyle={{ paddingBottom: 24 }}>
+        {encabezado}
+        <View style={{ marginTop: -2 }}>
+          <Mapa height={230} puntos={mapaOrigen} />
+        </View>
+        <View style={{ padding: 16, gap: 14, marginTop: -26 }}>{panel}</View>
       </ScrollView>
     </SafeAreaView>
   );

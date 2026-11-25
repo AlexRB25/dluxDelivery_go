@@ -4,8 +4,8 @@ import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
 import { Mapa, type PuntoMapa } from "@/components/Mapa";
-import { Vacio } from "@/components/piezas";
-import { Button, C, Card, Chip, Field, H2, Muted, Notice, Row, Screen } from "@/components/ui";
+import { ConMapa, Vacio } from "@/components/piezas";
+import { Button, C, Card, Chip, Field, H2, Muted, Notice, Row } from "@/components/ui";
 import { useApp } from "@/lib/app";
 import { CODIGOS, SERVICIOS } from "@/lib/demo";
 import { fechaHora, hora, km as fmtKm, pesos } from "@/lib/format";
@@ -62,8 +62,7 @@ export default function Cotizar() {
   };
 
   return (
-    <Screen>
-      <Mapa height={200} puntos={puntos} ruta />
+    <ConMapa mapa={(llenar) => <Mapa llenar={llenar} height={200} puntos={puntos} ruta />}>
       <Pressable onPress={() => router.push("/destino")}>
         <Row style={{ justifyContent: "space-between" }}>
           <View style={{ flex: 1 }}>
@@ -153,7 +152,7 @@ export default function Cotizar() {
         </Row>
         {metodo === "card" ? (
           <Muted>
-            Visa terminación 4242 (demo). Se aparta {pesos(Math.round(c.total * (1 + APARTADO_PCT / 100)))} por si hay esperas o paradas, y al terminar se cobra solo lo real.
+            Visa •••• 4242. Se aparta {pesos(Math.round(c.total * (1 + APARTADO_PCT / 100)))} por si hay esperas o paradas, y al terminar se cobra solo lo real.
           </Muted>
         ) : (
           <View style={{ gap: 4 }}>
@@ -212,8 +211,7 @@ export default function Cotizar() {
         disabled={borrador.paradas.some((p) => !p.id)}
         onPress={confirmar}
       />
-      <Muted style={{ textAlign: "center" }}>Versión de prueba: no se cobra nada.</Muted>
-    </Screen>
+    </ConMapa>
   );
 }
 

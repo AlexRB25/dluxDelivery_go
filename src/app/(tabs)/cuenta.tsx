@@ -1,26 +1,15 @@
-import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Linking, Platform, Text, View } from "react-native";
+import { Linking, Text, View } from "react-native";
 
-import { AvisoDemo } from "@/components/piezas";
-import { avisar, Button, C, Card, Field, H2, Item, Muted, Screen } from "@/components/ui";
+import { Button, C, Card, Field, H2, Item, Muted, pronto as muyPronto, Screen } from "@/components/ui";
 import { useApp } from "@/lib/app";
 import { DELIVERY_URL } from "@/lib/format";
 
 export default function Cuenta() {
-  const router = useRouter();
-  const { nombre, setNombre, viajes, guardados, contactos, agregarContacto, reiniciar } = useApp();
+  const { nombre, setNombre, viajes, guardados, contactos, agregarContacto } = useApp();
   const [txt, setTxt] = useState(nombre === "Invitado" ? "" : nombre);
   const [contacto, setContacto] = useState("");
-  const pronto = (que: string) => () => avisar("Versión de prueba", `${que} estará en la app real.`);
-
-  const borrar = () => {
-    const si = Platform.OS === "web" ? window.confirm("¿Borrar viajes y datos del demo?") : true;
-    if (si) {
-      reiniciar();
-      router.navigate("/");
-    }
-  };
+  const pronto = (que: string) => () => muyPronto(que);
 
   return (
     <Screen>
@@ -56,14 +45,12 @@ export default function Cuenta() {
         />
       </Card>
       <Item icon="bookmark" title="Lugares guardados" subtitle={guardados.map((g) => g.nombre).join(", ")} onPress={pronto("Editar lugares guardados")} />
-      <Item icon="card" title="Métodos de pago" subtitle="Tarjeta (demo) y efectivo" onPress={pronto("Guardar tarjetas")} />
+      <Item icon="card" title="Métodos de pago" subtitle="Tarjeta y efectivo" onPress={pronto("Guardar tus tarjetas")} />
       <Item icon="wallet" title="Saldo Dlux" subtitle="$0.00 · cambio a favor y adeudos de efectivo" onPress={pronto("El saldo a favor")} />
       <Item icon="business" title="Viajes de empresa" subtitle="Factura y cobro a tu empresa" onPress={pronto("Las cuentas de empresa")} />
       <Item icon="fast-food" title="Dlux Delivery" subtitle="Comida, súper y farmacia" onPress={() => Linking.openURL(DELIVERY_URL)} />
-      <Item icon="car" title="Maneja con Dlux" subtitle="Sin comisión: solo una membresía al mes" onPress={pronto("Registrarse como conductor desde aquí")} />
+      <Item icon="car" title="Maneja con Dlux" subtitle="Sin comisión: solo una membresía al mes" onPress={pronto("Registrarte como conductor desde aquí")} />
       <Item icon="help-buoy" title="Ayuda" subtitle="Reportes, objetos olvidados y preguntas" onPress={pronto("El centro de ayuda")} />
-      <AvisoDemo />
-      <Button variant="outline" icon="refresh" title="Empezar el demo de cero" onPress={borrar} />
     </Screen>
   );
 }

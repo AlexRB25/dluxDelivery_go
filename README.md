@@ -2,7 +2,7 @@
 
 App de usuarios de Dlux para pedir **viajes** (moto, económico, comfort, XL) y **mandar paquetes** (Expo SDK 57 + expo-router). Corre en Android, iPhone y **navegador**.
 
-Por ahora corre en **modo demo**: lugares conocidos de Guadalajara, conductores de ejemplo y viajes que avanzan solos (unos 2.5 minutos; el botón "Adelantar" lo acelera). Sirve para enseñarla a clientes con un link.
+Por ahora corre en **modo demo**: lugares conocidos de Guadalajara, conductores de ejemplo y viajes que avanzan solos (unos 2.5 minutos; mantener presionada la tarjeta de estado lo adelanta). La interfaz ya no dice "demo": en computadora el mapa ocupa la pantalla con el panel al lado, y en celular se adapta. Sirve para enseñarla a clientes con un link.
 
 ## Correr
 

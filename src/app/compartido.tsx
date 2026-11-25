@@ -2,8 +2,8 @@ import { useLocalSearchParams } from "expo-router";
 import { Text, View } from "react-native";
 
 import { Mapa, type PuntoMapa } from "@/components/Mapa";
-import { TarjetaConductor, Vacio } from "@/components/piezas";
-import { C, Card, Muted, Notice, Screen } from "@/components/ui";
+import { ConMapa, TarjetaConductor, Vacio } from "@/components/piezas";
+import { C, Card, Muted, Notice } from "@/components/ui";
 import { useApp } from "@/lib/app";
 import { progreso } from "@/lib/simulacion";
 
@@ -20,7 +20,7 @@ export default function Compartido() {
   if (pr.conductor) puntos.push({ ...pr.conductor, tipo: "conductor", emoji: v.servicio.vehiculo });
 
   return (
-    <Screen>
+    <ConMapa mapa={(llenar) => <Mapa llenar={llenar} height={300} puntos={puntos} ruta seguir={!!pr.conductor} />}>
       <Notice tone="navy" icon="people">{`${nombre === "Invitado" ? "Alguien" : nombre} compartió su viaje contigo`}</Notice>
       <Card style={{ backgroundColor: C.navy, borderColor: C.navy }}>
         <Text style={{ color: "#fff", fontSize: 20, fontWeight: "900" }}>{pr.titulo.replace("tu destino", "su destino").replace("por ti", "por tu contacto")}</Text>
@@ -29,13 +29,12 @@ export default function Compartido() {
           {pr.faltan != null ? ` · ${pr.faltan} min` : ""}
         </Text>
       </Card>
-      <Mapa height={300} puntos={puntos} ruta seguir={!!pr.conductor} />
       <Card>
         <TarjetaConductor c={v.conductor} vehiculo={v.servicio.vehiculo} />
       </Card>
       <View>
         <Muted style={{ textAlign: "center" }}>Esta página se actualiza sola y deja de funcionar cuando termina el viaje.</Muted>
       </View>
-    </Screen>
+    </ConMapa>
   );
 }

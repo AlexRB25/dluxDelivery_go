@@ -89,7 +89,7 @@ export default function Destino() {
   const puntosMapa: PuntoMapa[] = punto ? [{ ...punto, tipo: "destino" }] : [{ ...borrador.origen.ubicacion, tipo: "origen" }];
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, width: "100%", maxWidth: 760, alignSelf: "center" }}>
       <View style={{ backgroundColor: C.surface, padding: 14, gap: 8, borderBottomWidth: 1, borderColor: C.border }}>
         {caja("origen", C.ok, "A", borrador.origen, paquete ? "¿Dónde lo recogemos?" : "¿Dónde te recogemos?")}
         {borrador.paradas.map((p, i) => caja(i, C.warn, String(i + 1), p, `Parada ${i + 1}`, () => quitarParada(i)))}
