@@ -1,12 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
 import { Mapa, type PuntoMapa } from "@/components/Mapa";
 import { ConMapa, Vacio } from "@/components/piezas";
 import { Button, C, Card, Chip, Field, H2, Muted, Notice, Row } from "@/components/ui";
-import { useApp } from "@/lib/app";
+import { useApp, type Opciones } from "@/lib/app";
 import { CODIGOS, SERVICIOS } from "@/lib/demo";
 import { fechaHora, hora, km as fmtKm, pesos } from "@/lib/format";
 import { APARTADO_PCT, CARD_FEE_FIXED, CARD_FEE_PCT, cotizar, recorrido } from "@/lib/reglas";
@@ -23,10 +23,13 @@ function horarios() {
 
 export default function Cotizar() {
   const router = useRouter();
-  const { borrador, pedir, codigosUsados, ahora } = useApp();
+  const { borrador, pedir, codigosUsados, ahora, real, sesion, opciones: pedirOpciones } = useApp();
   const paquete = borrador.tipo === "parcel";
-  const opciones = SERVICIOS.filter((s) => s.tipo === borrador.tipo);
-  const [servicioId, setServicioId] = useState(opciones[paquete ? 0 : 1]?.id ?? opciones[0].id);
+  // base real: servicios y precios de quote_trip_options; demo: tarifas de ejemplo
+  const [ops, setOps] = useState<Opciones | null>(null);
+  const [errorOps, setErrorOps] = useState("");
+  const opciones = real ? (ops?.servicios ?? []) : SERVICIOS.filter((s) => s.tipo === borrador.tipo);
+  const [servicioId, setServicioId] = useState(real ? "" : (opciones[paquete ? 0 : 1]?.id ?? opciones[0]?.id ?? ""));
   const [metodo, setMetodo] = useState<MetodoPago>("card");
   const [codigoTxt, setCodigoTxt] = useState("");
   const [codigo, setCodigo] = useState<string | null>(null);
@@ -35,28 +38,73 @@ export default function Cotizar() {
   const [verHoras, setVerHoras] = useState(false);
   const [pagaCon, setPagaCon] = useState("");
   const [pq, setPq] = useState<Paquete>({ recibe: "", telefono: "", descripcion: "", tamano: "chico" });
+  const firma = JSON.stringify([borrador.tipo, borrador.origen.ubicacion, borrador.destino?.ubicacion, borrador.paradas.map((x) => x.ubicacion)]);
+  useEffect(() => {
+    if (!real || !sesion || !borrador.destino) return;
+    let vivo = true;
+    pedirOpciones(codigo)
+      .then((o) => {
+        if (!vivo) return;
+        setOps(o);
+        setErrorOps(o.servicios.length ? "" : "Por ahora no hay servicio de este tipo en tu zona.");
+        const err = Object.values(o.precios).find((x) => x.promo_error)?.promo_error;
+        if (err && codigo) {
+          setErrorCodigo(err);
+          setCodigo(null);
+        }
+        setServicioId((sid) => (o.servicios.some((x) => x.id === sid) ? sid : (o.servicios.find((x) => x.id === "ride_economy") ?? o.servicios[0])?.id ?? ""));
+      })
+      .catch((e: Error) => {
+        if (vivo) setErrorOps(e.message);
+      });
+    return () => {
+      vivo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [real, sesion, firma, codigo]);
 
   if (!borrador.destino) return <Vacio icon="navigate-outline" titulo="Elige primero a dónde vas" />;
+  if (real && !sesion) {
+    return (
+      <Card style={{ margin: 16 }}>
+        <H2>Inicia sesión para ver precios</H2>
+        <Muted>Con tu cuenta de Dlux pides, pagas y sigues tu viaje. Es la misma cuenta de Dlux Delivery.</Muted>
+        <Button icon="person-circle" title="Entrar o crear cuenta" onPress={() => router.push("/entrar")} />
+      </Card>
+    );
+  }
 
   const ruta = [borrador.origen, ...borrador.paradas.filter((p) => p.id), borrador.destino];
   const { km, minutos } = recorrido(ruta);
   const servicio = opciones.find((s) => s.id === servicioId) ?? opciones[0];
-  const c = cotizar(servicio, km, minutos, metodo, codigo);
+  /** Precio de un servicio: lo de la base (real) o el cálculo de ejemplo. */
+  const precio = (sv: NonNullable<typeof servicio>) => {
+    const o = ops?.precios[sv.id];
+    if (real && o) {
+      const total = Number(metodo === "card" ? o.card_to_pay : (o.cash_to_pay ?? o.card_to_pay));
+      return { tarifa: Number(o.fare), descuento: Number(o.discount) + Number(o.credit), cargoTarjeta: metodo === "card" ? Number(o.card_fee) : 0, total };
+    }
+    return cotizar(sv, km, minutos, metodo, codigo);
+  };
+  const c = servicio ? precio(servicio) : { tarifa: 0, descuento: 0, cargoTarjeta: 0, total: 0 };
+  const llegaEn = (sv: NonNullable<typeof servicio>) => (real ? (ops?.precios[sv.id]?.eta_minutes ?? null) : sv.llega);
 
   const puntos: PuntoMapa[] = ruta.map((l, i) => ({ ...l.ubicacion, tipo: i === 0 ? "origen" : i === ruta.length - 1 ? "destino" : "parada", titulo: l.nombre }));
 
   const aplicar = () => {
     const k = codigoTxt.trim().toUpperCase();
     setErrorCodigo("");
+    if (real) return setCodigo(k); // la base revisa si aplica
     if (!CODIGOS[k]) return setErrorCodigo("Ese código no existe. Prueba GO20 o PRIMERVIAJE.");
     if (codigosUsados.includes(k)) return setErrorCodigo("Ya usaste este código.");
     setCodigo(k);
   };
 
-  const confirmar = () => {
+  const confirmar = async () => {
+    if (!servicio) throw new Error("Elige un servicio");
     if (paquete && (pq.recibe.trim().length < 2 || pq.telefono.replace(/\D/g, "").length < 10)) throw new Error("Escribe el nombre y el teléfono (10 dígitos) de quien recibe.");
     if (metodo === "cash" && pagaCon && Number(pagaCon) < c.total) throw new Error(`Con ${pesos(pagaCon)} no alcanza para ${pesos(c.total)}.`);
-    const id = pedir({ servicio, metodo, codigo, programado, pagaCon: pagaCon ? Number(pagaCon) : undefined, paquete: paquete ? pq : undefined });
+    const id = await pedir({ servicio, metodo, codigo, programado, pagaCon: pagaCon ? Number(pagaCon) : undefined, paquete: paquete ? pq : undefined });
     router.dismissAll();
     router.push({ pathname: "/viaje/[id]", params: { id } });
   };
@@ -78,9 +126,12 @@ export default function Cotizar() {
       </Pressable>
 
       {/* Tipos de servicio */}
+      {real && !ops && !errorOps && <Muted style={{ textAlign: "center", padding: 12 }}>Calculando precios…</Muted>}
+      {errorOps ? <Notice tone="warn" icon="information-circle">{errorOps}</Notice> : null}
       {opciones.map((s) => {
-        const q = cotizar(s, km, minutos, metodo, codigo);
-        const sel = s.id === servicio.id;
+        const q = precio(s);
+        const llega = llegaEn(s);
+        const sel = s.id === servicio?.id;
         return (
           <Pressable
             key={s.id}
@@ -100,7 +151,7 @@ export default function Cotizar() {
               </Row>
               <Muted>{s.descripcion}</Muted>
               <Text style={{ color: C.ok, fontSize: 12, fontWeight: "700" }}>
-                Llega en {s.llega} min · {programado ? "agendado" : `deja ${hora(ahora + (s.llega + minutos) * 60_000)}`}
+                {programado ? "Agendado" : llega != null ? `Llega en ${llega} min · deja ${hora(ahora + (llega + minutos) * 60_000)}` : "Buscamos al conductor más cercano"}
               </Text>
             </View>
             <View style={{ alignItems: "flex-end" }}>
@@ -169,7 +220,7 @@ export default function Cotizar() {
         )}
         {codigo ? (
           <Row style={{ justifyContent: "space-between" }}>
-            <Text style={{ color: C.ok, fontWeight: "800" }}>✓ {codigo}: {CODIGOS[codigo].texto}</Text>
+            <Text style={{ color: C.ok, fontWeight: "800" }}>✓ {codigo}{CODIGOS[codigo] ? `: ${CODIGOS[codigo].texto}` : c.descuento > 0 ? `: −${pesos(c.descuento)}` : ""}</Text>
             <Pressable onPress={() => setCodigo(null)}>
               <Text style={{ color: C.danger, fontWeight: "700" }}>Quitar</Text>
             </Pressable>
@@ -192,8 +243,8 @@ export default function Cotizar() {
       </Card>
 
       <Card>
-        <Linea t={`Tarifa ${servicio.nombre} (${fmtKm(km)}, ${minutos} min)`} v={pesos(c.tarifa)} />
-        {c.descuento > 0 && <Linea t="Descuento" v={`−${pesos(c.descuento)}`} verde />}
+        <Linea t={`Tarifa ${servicio?.nombre ?? ""} (${fmtKm(km)}, ${minutos} min)`} v={pesos(c.tarifa)} />
+        {c.descuento > 0 && <Linea t={real ? "Descuento y saldo a favor" : "Descuento"} v={`−${pesos(c.descuento)}`} verde />}
         {c.cargoTarjeta > 0 && <Linea t={`Cargo por pago con tarjeta (${CARD_FEE_PCT}% + $${CARD_FEE_FIXED})`} v={pesos(c.cargoTarjeta)} />}
         <Row style={{ justifyContent: "space-between", borderTopWidth: 1, borderColor: C.border, paddingTop: 8 }}>
           <Text style={{ fontWeight: "900", fontSize: 18, color: C.text }}>Total estimado</Text>
@@ -207,8 +258,8 @@ export default function Cotizar() {
         big
         variant="yellow"
         icon={paquete ? "cube" : "car-sport"}
-        title={`${programado ? "Agendar" : "Pedir"} ${servicio.nombre} · ${pesos(c.total)}`}
-        disabled={borrador.paradas.some((p) => !p.id)}
+        title={servicio ? `${programado ? "Agendar" : "Pedir"} ${servicio.nombre} · ${pesos(c.total)}` : "Elige un servicio"}
+        disabled={!servicio || borrador.paradas.some((p) => !p.id)}
         onPress={confirmar}
       />
     </ConMapa>

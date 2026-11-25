@@ -1,18 +1,33 @@
 import { useRouter } from "expo-router";
+import { useEffect } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { Vacio } from "@/components/piezas";
 import { Badge, Button, C, H2, Muted, Row, Screen } from "@/components/ui";
 import { useApp } from "@/lib/app";
 import { fechaHora, pesos } from "@/lib/format";
+import { viajeDesdeDB, type ViajeDB } from "@/lib/real";
 import { activo, cuentaFinal, progreso } from "@/lib/simulacion";
+import { rpc } from "@/lib/supabase";
 import type { Viaje } from "@/lib/types";
 
 export default function Viajes() {
   const router = useRouter();
-  const { viajes, ahora, nuevoBorrador, cambiarBorrador } = useApp();
+  const { viajes, ahora, nuevoBorrador, cambiarBorrador, real, sesion, refrescarViajes } = useApp();
+  useEffect(() => {
+    void refrescarViajes().catch(() => {});
+  }, [refrescarViajes]);
   const enCurso = viajes.filter((v) => activo(v, ahora));
   const antes = viajes.filter((v) => !activo(v, ahora));
+
+  if (real && !sesion) {
+    return (
+      <Screen>
+        <Vacio icon="person-circle-outline" titulo="Entra a tu cuenta" texto="Aquí ves tus viajes y los sigues en vivo." />
+        <Button title="Entrar o crear cuenta" onPress={() => router.push("/entrar")} />
+      </Screen>
+    );
+  }
 
   if (!viajes.length) {
     return (
@@ -23,11 +38,14 @@ export default function Viajes() {
     );
   }
 
-  const repetir = (v: Viaje) => {
+  const repetir = async (v0: Viaje) => {
+    // la lista no trae coordenadas: en la base real se pide el viaje completo
+    const v = real && !v0.real?.completo ? viajeDesdeDB(await rpc<ViajeDB>("my_trip", { p_trip: v0.id })) : v0;
     nuevoBorrador(v.tipo, v.destino);
     cambiarBorrador({ origen: v.origen, paradas: v.paradas });
     router.push("/cotizar");
   };
+
 
   const fila = (v: Viaje) => {
     const pr = progreso(v, ahora);

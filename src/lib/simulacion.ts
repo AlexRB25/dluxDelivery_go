@@ -66,7 +66,64 @@ function sobreRuta(ruta: Lugar[], f: number): Punto {
   return ruta[ruta.length - 1].ubicacion;
 }
 
+/** Viaje real: el estado viene de la base (reparto, conductor y cambios de ruta). */
+function progresoReal(v: Viaje, ahora: number): Progreso {
+  const x = v.real!;
+  const ruta = [v.origen, ...v.paradas, v.destino];
+  const pendientes: Cambio[] = x.cambios
+    .filter((c) => c.status === "pending")
+    .map((c) => ({ id: c.id, tipo: c.kind === "add_stop" ? "parada" : "destino", lugar: { id: c.id, nombre: c.address, direccion: c.address, ubicacion: { lat: 0, lng: 0 } }, pedido: Date.parse(c.created_at) }));
+  const base = { ruta, pendientes, km: v.km, espera: 0, conductor: null as Punto | null, faltan: null as number | null };
+  const nombre = v.conductor.nombre.split(" ")[0];
+  const paquete = v.tipo === "parcel";
+  switch (x.estado) {
+    case "canceled":
+      return { ...base, estado: "cancelado", titulo: "Viaje cancelado", texto: "", avance: 0 };
+    case "scheduled": {
+      const h = v.programado ? new Date(v.programado).toLocaleString("es-MX", { weekday: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+      return { ...base, estado: "agendado", titulo: "Viaje agendado", texto: `Te recogemos el ${h}. Buscamos conductor antes de la hora.`, avance: 0.03 };
+    }
+    case "searching":
+      return { ...base, estado: "buscando", titulo: "Buscando conductor…", texto: `Le avisamos a los conductores de ${v.servicio.nombre} más cercanos.`, avance: 0.08 };
+    case "assigned":
+    case "arriving":
+      if (x.llego) {
+        return {
+          ...base,
+          estado: "llego",
+          titulo: paquete ? `${nombre} llegó por el paquete` : `${nombre} llegó`,
+          texto: paquete ? "Entrégale el paquete." : `Busca el ${v.conductor.vehiculo} ${v.conductor.color.toLowerCase()} con placas ${v.conductor.placas}.`,
+          avance: 0.32,
+          conductor: x.conductorPos,
+          espera: x.llegoEn ? Math.max(0, Math.floor((ahora - x.llegoEn) / 60000)) : 0,
+        };
+      }
+      return {
+        ...base,
+        estado: "en_camino",
+        titulo: `${nombre} va por ${paquete ? "el paquete" : "ti"}`,
+        texto: [v.conductor.vehiculo, v.conductor.color.toLowerCase(), v.conductor.placas].filter(Boolean).join(" · "),
+        avance: 0.2,
+        conductor: x.conductorPos,
+        faltan: x.eta,
+      };
+    case "in_progress":
+      return {
+        ...base,
+        estado: "en_viaje",
+        titulo: paquete ? "Tu paquete va en camino" : "En camino a tu destino",
+        texto: x.eta ? `Llegada aprox. ${new Date(ahora + x.eta * 60000).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}` : "",
+        avance: 0.6,
+        conductor: x.conductorPos,
+        faltan: x.eta,
+      };
+    default:
+      return { ...base, estado: "terminado", titulo: paquete ? "Paquete entregado" : "Llegaste a tu destino", texto: "Gracias por viajar con Dlux.", avance: 1 };
+  }
+}
+
 export function progreso(v: Viaje, ahora: number): Progreso {
+  if (v.real) return progresoReal(v, ahora);
   const { ruta, pendientes } = rutaEfectiva(v, ahora);
   const { km } = recorrido(ruta);
   const base = { ruta, pendientes, km, espera: 0, conductor: null as Punto | null, faltan: null as number | null };
@@ -121,6 +178,8 @@ export function progreso(v: Viaje, ahora: number): Progreso {
 
 /** Cobro final: con la ruta que realmente se hizo (paradas y cambios incluidos) y la propina. */
 export function cuentaFinal(v: Viaje, ahora: number) {
+  // real: lo que dice la base (paradas, esperas y propina ya incluidas)
+  if (v.real) return { tarifa: v.tarifa + v.real.extras, descuento: v.descuento + v.real.credito, propina: v.propina ?? 0, cargoTarjeta: v.cargoTarjeta, total: v.total, km: v.km, minutos: v.minutos };
   const { ruta } = rutaEfectiva(v, ahora);
   const r = recorrido(ruta);
   const t = tarifa(v.servicio, r.km, r.minutos);

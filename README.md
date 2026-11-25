@@ -33,6 +33,19 @@ npm run typecheck
 - `src/lib/app.tsx`: estado (borrador del viaje, viajes, lugares), guardado en el dispositivo.
 - `src/components/Mapa.tsx` / `Mapa.web.tsx`: Leaflet + OpenStreetMap.
 
+## Base real (Supabase)
+
+La app tiene dos modos:
+
+- **Sin variables** (como está publicada hoy): datos de ejemplo, sin cuentas, para enseñarla.
+- **Con `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`**: usa la base de Dlux. Se ve el escaparate sin cuenta; para pedir hay que entrar (la misma cuenta sirve en Delivery, Go y Driver).
+
+Usa las funciones del bloque «Apps de usuarios» de `admin/supabase/002_plataforma.sql` (probadas en PGlite): `customer_home`, `branch_page`, `quote_checkout`, `create_checkout`, `my_orders`, `my_order`, `my_addresses`, `save_address`, `set_default_address`, `update_my_profile`, `rate_order`, `set_order_status` (cancelar), `quote_trip_options`, `request_trip`, `my_trips`, `my_trip`, `request_trip_change`, `cancel_trip`, `share_trip`, `shared_trip`, `rate_trip`, `add_tip`.
+
+En Vercel se ponen las dos variables en el proyecto y se vuelve a publicar. `EXPO_PUBLIC_DELIVERY_URL` apunta a Dlux Delivery.
+
+Pendiente con la base real: cobro con Stripe (hoy la tarjeta solo se registra como método), subir receta de farmacia, avisos push y aprobar sustituciones del súper en vivo.
+
 ## Falta para la app real
 
 - Supabase: login (misma cuenta que Dlux Delivery), `quote_trip`, `request_trip` (con `p_extra_stops` y `p_promo_code`), seguimiento con Realtime, `request_trip_change`, `share_trip` / `shared_trip`, `cancel_trip`, `add_tip`, `open_ticket`, saldo con `my_balance`.

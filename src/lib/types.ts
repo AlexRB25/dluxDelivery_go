@@ -37,6 +37,22 @@ export type Paquete = { recibe: string; telefono: string; descripcion: string; t
 
 export type Cambio = { id: string; tipo: "parada" | "destino"; lugar: Lugar; pedido: number };
 
+/** Lo que llega de la base para seguir un viaje real (my_trip). */
+export type ViajeReal = {
+  estado: "scheduled" | "searching" | "assigned" | "arriving" | "in_progress" | "completed" | "canceled";
+  conductorPos: Punto | null;
+  hayConductor: boolean;
+  eta: number | null;
+  /** El conductor ya marcó que llegó al origen (desde cuándo espera). */
+  llego: boolean;
+  llegoEn: number | null;
+  cambios: { id: string; kind: "add_stop" | "change_destination"; address: string; status: "pending" | "approved" | "rejected"; created_at: string }[];
+  token: string | null;
+  extras: number;
+  credito: number;
+  completo?: boolean;
+};
+
 export type Viaje = {
   id: string;
   folio: string;
@@ -66,6 +82,7 @@ export type Viaje = {
   propina?: number;
   calificacion?: number;
   comentario?: string;
+  real?: ViajeReal;
 };
 
 /** Lo que el usuario va armando antes de pedir. */

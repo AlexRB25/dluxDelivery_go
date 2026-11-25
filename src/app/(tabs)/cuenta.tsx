@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Linking, Text, View } from "react-native";
 
@@ -6,19 +7,27 @@ import { useApp } from "@/lib/app";
 import { DELIVERY_URL } from "@/lib/format";
 
 export default function Cuenta() {
-  const { nombre, setNombre, viajes, guardados, contactos, agregarContacto } = useApp();
+  const router = useRouter();
+  const { nombre, setNombre, viajes, guardados, contactos, agregarContacto, real, sesion, salir } = useApp();
   const [txt, setTxt] = useState(nombre === "Invitado" ? "" : nombre);
   const [contacto, setContacto] = useState("");
   const pronto = (que: string) => () => muyPronto(que);
 
   return (
     <Screen>
+      {real && !sesion && (
+        <Card style={{ borderColor: C.navy, borderWidth: 2 }}>
+          <H2>Entra a tu cuenta Dlux</H2>
+          <Muted>La misma cuenta sirve en Dlux Go y Dlux Delivery.</Muted>
+          <Button icon="person-circle" title="Entrar o crear cuenta" onPress={() => router.push("/entrar")} />
+        </Card>
+      )}
       <Card style={{ alignItems: "center" }}>
         <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: C.navy, alignItems: "center", justifyContent: "center" }}>
           <Text style={{ color: C.yellow, fontSize: 30, fontWeight: "900" }}>{(nombre[0] ?? "D").toUpperCase()}</Text>
         </View>
         <H2>{nombre}</H2>
-        <Muted>⭐ 4.9 como pasajero · {viajes.length} viajes</Muted>
+        <Muted>{real ? "" : "⭐ 4.9 como pasajero · "}{viajes.length} viajes</Muted>
       </Card>
       <Card>
         <Field label="¿Cómo te llamas?" value={txt} onChangeText={setTxt} placeholder="Tu nombre" />
@@ -51,6 +60,12 @@ export default function Cuenta() {
       <Item icon="fast-food" title="Dlux Delivery" subtitle="Comida, súper y farmacia" onPress={() => Linking.openURL(DELIVERY_URL)} />
       <Item icon="car" title="Maneja con Dlux" subtitle="Sin comisión: solo una membresía al mes" onPress={pronto("Registrarte como conductor desde aquí")} />
       <Item icon="help-buoy" title="Ayuda" subtitle="Reportes, objetos olvidados y preguntas" onPress={pronto("El centro de ayuda")} />
+      {real && sesion && (
+        <>
+          <Muted style={{ textAlign: "center" }}>{sesion.user.email}</Muted>
+          <Button variant="outline" icon="log-out" title="Cerrar sesión" onPress={salir} />
+        </>
+      )}
     </Screen>
   );
 }

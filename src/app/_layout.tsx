@@ -22,6 +22,7 @@ function Pantallas() {
       <Stack.Screen name="cotizar" options={{ title: "Elige tu viaje" }} />
       <Stack.Screen name="viaje/[id]" options={{ title: "Tu viaje" }} />
       <Stack.Screen name="compartido" options={{ title: "Viaje compartido" }} />
+      <Stack.Screen name="entrar" options={{ title: "Tu cuenta Dlux" }} />
     </Stack>
   );
 }

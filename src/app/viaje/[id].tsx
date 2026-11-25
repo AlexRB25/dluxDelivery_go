@@ -1,12 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Linking, Platform, Pressable, Text, TextInput, View } from "react-native";
 
 import { Mapa, type PuntoMapa } from "@/components/Mapa";
 import { ConMapa, FilaLugar, TarjetaConductor, Vacio } from "@/components/piezas";
 import { avisar, Button, C, Card, Chip, H2, Muted, Notice, pronto, Row } from "@/components/ui";
-import { nuevoId, useApp } from "@/lib/app";
+import { useApp } from "@/lib/app";
 import { ESPERA_GRATIS_MIN, LUGARES } from "@/lib/demo";
 import { hora, km as fmtKm, pesos } from "@/lib/format";
 import { CARGO_CANCELAR, cancelarCuesta, cuentaFinal, progreso } from "@/lib/simulacion";
@@ -16,14 +16,33 @@ const PROPINAS = [0, 10, 20, 30];
 export default function ViajePantalla() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { viajes, ahora, actualizarViaje } = useApp();
+  const { viajes, ahora, actualizarViaje, real, seguir, pedirCambio: pedirCambioApp, cancelar: cancelarApp, compartir: compartirApp, calificar, darPropina } = useApp();
   const v = viajes.find((x) => x.id === id);
   const [cambiando, setCambiando] = useState<"parada" | "destino" | null>(null);
   const [estrellas, setEstrellas] = useState(0);
   const [comentario, setComentario] = useState("");
   const [ayuda, setAyuda] = useState(false);
+  const [errorSeguir, setErrorSeguir] = useState("");
+  const actual = viajes.find((x) => x.id === id);
+  const fin = actual?.real?.completo && ["completed", "canceled"].includes(actual.real.estado);
+  // base real: traer el viaje y refrescarlo cada 4 s mientras dure
+  useEffect(() => {
+    if (!real) return;
+    let vivo = true;
+    const traer = () =>
+      seguir(id)
+        .then(() => vivo && setErrorSeguir(""))
+        .catch((e: Error) => vivo && setErrorSeguir(e.message));
+    void traer();
+    if (fin) return;
+    const t = setInterval(traer, 4000);
+    return () => {
+      vivo = false;
+      clearInterval(t);
+    };
+  }, [real, id, seguir, fin]);
 
-  if (!v) return <Vacio icon="car-outline" titulo="No encontramos este viaje" />;
+  if (!v) return <Vacio icon="car-outline" titulo={errorSeguir || (real ? "Cargando tu viaje…" : "No encontramos este viaje")} />;
   const pr = progreso(v, ahora);
   const paquete = v.tipo === "parcel";
   const nombre = v.conductor.nombre.split(" ")[0];
@@ -33,35 +52,37 @@ export default function ViajePantalla() {
   const puntos: PuntoMapa[] = pr.ruta.map((l, i) => ({ ...l.ubicacion, tipo: i === 0 ? "origen" : i === pr.ruta.length - 1 ? "destino" : "parada", titulo: l.nombre }));
   if (pr.conductor) puntos.push({ ...pr.conductor, tipo: "conductor", emoji: v.servicio.vehiculo, titulo: v.conductor.nombre });
 
-  const pedirCambio = (tipo: "parada" | "destino", lugarId: string) => {
+  const pedirCambio = async (tipo: "parada" | "destino", lugarId: string) => {
     const lugar = LUGARES.find((l) => l.id === lugarId)!;
-    actualizarViaje(v.id, (x) => ({ cambios: [...x.cambios, { id: nuevoId(), tipo, lugar, pedido: Date.now() + (x.adelanto ?? 0) }] }));
+    await pedirCambioApp(v.id, tipo, lugar);
     setCambiando(null);
   };
 
-  const cancelar = () => {
+  const cancelar = async () => {
     const cuesta = cancelarCuesta(v, ahora);
-    const msg = cuesta ? `${nombre} ya llegó: cancelar cuesta ${pesos(CARGO_CANCELAR)} (se le pagan a él por su tiempo).` : "Cancelar ahora no tiene costo.";
+    const msg = cuesta && !real ? `${nombre} ya llegó: cancelar cuesta ${pesos(CARGO_CANCELAR)} (se le pagan a él por su tiempo).` : "Cancelar ahora no tiene costo.";
     const ok = Platform.OS === "web" ? window.confirm(`¿Cancelar el viaje?\n\n${msg}`) : true;
-    if (ok) actualizarViaje(v.id, { cancelado: true });
+    if (ok) await cancelarApp(v.id);
   };
 
-  const compartir = () => {
-    actualizarViaje(v.id, { compartido: true });
-    avisar(
-      "Viaje compartido",
-      "Quien tenga el enlace ve en vivo dónde vas, el conductor, las placas y la hora de llegada, sin necesidad de cuenta. Deja de funcionar al terminar el viaje.",
-    );
+  const compartir = async () => {
+    const token = await compartirApp(v.id);
+    const texto = "Quien tenga el enlace ve en vivo dónde vas, el conductor, las placas y la hora de llegada, sin necesidad de cuenta. Deja de funcionar al terminar el viaje.";
+    if (token && Platform.OS === "web") {
+      const link = `${window.location.origin}/compartido?t=${token}`;
+      await navigator.clipboard?.writeText(link).catch(() => {});
+      avisar("Enlace copiado", `${texto}\n\n${link}`);
+    } else avisar("Viaje compartido", texto);
   };
 
   const final = pr.estado === "terminado" ? cuentaFinal(v, ahora) : null;
 
   // Para presentaciones: mantener presionada la tarjeta de estado adelanta el viaje
-  const adelantar = () => actualizarViaje(v.id, { adelanto: (v.adelanto ?? 0) + 15_000, programado: undefined });
+  const adelantar = () => (real ? undefined : actualizarViaje(v.id, { adelanto: (v.adelanto ?? 0) + 15_000, programado: undefined }));
   const enMarcha = pr.estado !== "terminado" && pr.estado !== "cancelado";
 
   const estado = (
-    <Pressable onLongPress={enMarcha ? adelantar : undefined} delayLongPress={900}>
+    <Pressable onLongPress={enMarcha && !real ? adelantar : undefined} delayLongPress={900}>
       <Card style={{ backgroundColor: C.navy, borderColor: C.navy }}>
         <Row style={{ justifyContent: "space-between" }}>
           <Text style={{ color: "#ffffffaa", fontWeight: "700" }}>
@@ -156,7 +177,7 @@ export default function ViajePantalla() {
             </View>
           </Row>
           {v.compartido && (
-            <Pressable onPress={() => router.push({ pathname: "/compartido", params: { v: v.id } })}>
+            <Pressable onPress={() => router.push({ pathname: "/compartido", params: real && v.real?.token ? { t: v.real.token } : { v: v.id } })}>
               <Text style={{ color: C.navy, fontWeight: "700", textAlign: "center" }}>Ver como lo ve tu contacto →</Text>
             </Pressable>
           )}
@@ -220,7 +241,7 @@ export default function ViajePantalla() {
                   <Muted>Propina para {nombre} (se la lleva completa)</Muted>
                   <Row style={{ flexWrap: "wrap" }}>
                     {PROPINAS.map((n) => (
-                      <Chip key={n} label={n ? pesos(n) : "Ahora no"} active={(v.propina ?? 0) === n} onPress={() => actualizarViaje(v.id, { propina: n })} />
+                      <Chip key={n} label={n ? pesos(n) : "Ahora no"} active={(v.propina ?? 0) === n} onPress={() => darPropina(v.id, n)} />
                     ))}
                   </Row>
                 </>
@@ -232,7 +253,7 @@ export default function ViajePantalla() {
                 placeholderTextColor={C.muted}
                 style={{ borderWidth: 1, borderColor: C.border, borderRadius: 10, padding: 11, backgroundColor: C.surface, color: C.text }}
               />
-              <Button title="Enviar calificación" disabled={!estrellas} onPress={() => actualizarViaje(v.id, { calificacion: estrellas, comentario: comentario.trim() || undefined })} />
+              <Button title="Enviar calificación" disabled={!estrellas} onPress={() => calificar(v.id, estrellas, comentario.trim() || undefined)} />
             </Card>
           ) : (
             <Notice tone="ok" icon="star">{`Calificaste con ${v.calificacion} estrellas. ¡Gracias!`}</Notice>
