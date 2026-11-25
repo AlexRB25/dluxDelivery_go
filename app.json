@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "Dlux Go",
+    "slug": "dlux-go",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "dluxgo",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "com.dlux.go",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Dlux Go usa tu ubicación para que el conductor sepa dónde recogerte."
+      }
+    },
+    "android": {
+      "package": "com.dlux.go",
+      "adaptiveIcon": {
+        "backgroundColor": "#DFDFDF",
+        "foregroundImage": "./assets/images/adaptive-icon.png"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/images/icon.png",
+      "bundler": "metro",
+      "name": "Dlux Go",
+      "themeColor": "#001F3F",
+      "backgroundColor": "#F3F4F6"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#DFDFDF",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 160
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Dlux Go usa tu ubicación para que el conductor sepa dónde recogerte."
+        }
+      ],
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
