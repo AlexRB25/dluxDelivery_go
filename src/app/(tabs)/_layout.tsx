@@ -1,16 +1,22 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 
-import { C } from "@/components/ui";
+import LOGO from "@/assets/images/logo-dlux-go.png";
+import { BarraLateral } from "@/components/BarraLateral";
+import { C, useEscritorio } from "@/components/ui";
 import { useApp } from "@/lib/app";
 import { activo } from "@/lib/simulacion";
 
 export default function TabsLayout() {
+  // computadora: menú a la izquierda que se abre y se contrae; celular: pestañas abajo
+  const escritorio = useEscritorio();
   const { viajes, ahora } = useApp();
   const enCurso = viajes.filter((v) => activo(v, ahora)).length;
   return (
     <Tabs
+      tabBar={escritorio ? (props) => <BarraLateral {...props} logo={LOGO} nombre="Dlux Go" /> : undefined}
       screenOptions={{
+        tabBarPosition: escritorio ? "left" : "bottom",
         headerStyle: { backgroundColor: C.navy },
         headerTintColor: "#fff",
         headerTitleStyle: { fontWeight: "700" },

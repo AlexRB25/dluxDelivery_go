@@ -28,7 +28,7 @@ export default function Inicio() {
   const encabezado = (
         <View style={{ backgroundColor: C.navy, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 14 }}>
           <Row style={{ justifyContent: "space-between" }}>
-            <Text style={{ color: C.yellow, fontWeight: "900", fontSize: 24, letterSpacing: 0.5 }}>Dlux Go</Text>
+            {escritorio ? <Text style={{ color: "#fff", fontWeight: "800", fontSize: 20 }}>¿A dónde vamos hoy?</Text> : <Text style={{ color: C.yellow, fontWeight: "900", fontSize: 24, letterSpacing: 0.5 }}>Dlux Go</Text>}
             <Text style={{ color: "#ffffffaa" }}>Hola{nombre !== "Invitado" ? `, ${nombre.split(" ")[0]}` : ""} 👋</Text>
           </Row>
         </View>
